@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import Counter from '../components/Counter.svelte'
 
 	type Vec3 = [number, number, number]
 
@@ -8,31 +9,41 @@
 		{ below: '⬆️ More saturated', above: '⬇️ Less saturated' },
 		{ below: '➡️ Further right', above: '⬅️ Further left' }
 	]
+	const stepSizes = [0.05, 0.02, 20]
+	const limits = [
+		{ min: 0, max: 1 },
+		{ min: 0, max: 0.4 },
+		{ min: 0, max: 360 }
+	]
 
 	let darkTheme = $state(false)
-	let color = $state('150 150 150')
+	let colorRGB = $state('150 150 150')
 	let oklchValues: Vec3 = $state([0, 0, 0])
-	let guesses: Array<Array<number | null>> = $state(new Array(5).fill(new Array(3).fill(null)))
+	let guesses: Array<Array<number | undefined>> = $state(
+		Array.from({ length: 5 }, () => Array(3).fill(undefined))
+	)
 	let currentGuess = $state(0)
-	let displayMissing = $state(false)
 	let won = $state(false)
 
+	function arraysEqual(a: Array<number | undefined>, b: Vec3): boolean {
+		return a.length === b.length && a.every((val, i) => val === b[i])
+	}
+
 	function submit() {
-		if (guesses[currentGuess].includes(null)) {
-			displayMissing = true
+		if (guesses[currentGuess].some((v) => v === undefined)) {
 			return
 		}
 
-		if (guesses[currentGuess].join(',') === oklchValues.join(',')) {
+		if (arraysEqual(guesses[currentGuess], oklchValues)) {
 			won = true
 		}
 
-		guesses[currentGuess].forEach((value, i) => {
-			if (value === oklchValues[i] && currentGuess + 1 < guesses.length && !won)
+		if (!won && currentGuess + 1 < guesses.length) {
+			guesses[currentGuess].forEach((value, i) => {
 				guesses[currentGuess + 1][i] = value
-		})
+			})
+		}
 
-		displayMissing = false
 		currentGuess += 1
 	}
 
@@ -129,30 +140,31 @@
 	onMount(() => {
 		oklchValues = generateRandomOklchColor()
 		const [r, g, b] = oklchToSrgb(...oklchValues)
-		color = `${r} ${g} ${b}`
+		colorRGB = `${r} ${g} ${b}`
+		guesses[currentGuess] = [0, 0, 0]
 		console.log(`Generated color: ${oklchValues}`)
 	})
 </script>
 
-<div class="container" class:light={!darkTheme} class:dark={darkTheme} style="--color: {color}">
+<div class="container" class:light={!darkTheme} class:dark={darkTheme} style="--color: {colorRGB}">
 	<div class="color-box"></div>
 	{#each guesses as guess, i}
 		<div class="guess">
-			{#each guess as color, j}
+			{#each guess as _, j}
 				<div class="guess-value">
-					<input
-						type="number"
-						inputmode="numeric"
+					<Counter
 						bind:value={guess[j]}
-						disabled={currentGuess != i || won}
-						onkeydown={handleKeydown}
-						class:not-judged={i >= currentGuess}
-						class:missing={displayMissing && guess[j] === null}
-						class:correct={guess[j] === oklchValues[j] && i < currentGuess}
+						stepSize={stepSizes[j]}
+						min={limits[j].min}
+						max={limits[j].max}
+						disabled={i !== currentGuess}
+						unused={i > currentGuess}
+						accent="rgb({colorRGB})"
 					/>
 					{#if i < currentGuess}
 						<span class="judgement">{getDescriptor(j, guess[j] as number)}</span>
 					{/if}
+					<button onclick={submit}>Submit</button>
 				</div>
 			{/each}
 		</div>
@@ -169,6 +181,12 @@
 			background-color: var(--background-light);
 		}
 	</style>
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+	<link
+		href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap"
+		rel="stylesheet"
+	/>
 </svelte:head>
 
 <style>
@@ -194,7 +212,6 @@
 		background-color: rgb(var(--color));
 		width: 100%;
 		height: 100px;
-		border-radius: 8px;
 		margin-bottom: 8px;
 	}
 
@@ -208,58 +225,6 @@
 		display: flex;
 		flex-direction: column;
 		height: 100px;
-	}
-
-	.guess input {
-		padding: 4px;
-		max-width: 200px;
-		border-radius: 8px;
-		border: solid #ccc;
-		border-width: 1px;
-		-moz-appearance: textfield;
-		appearance: textfield;
-		box-shadow: 2px 2px 4px -2px rgba(0, 0, 0, 0.2);
-		flex-grow: 1;
-		text-align: center;
-		font-size: 1.5em;
-		transition:
-			background-color 0.3s ease-in-out,
-			box-shadow 0.3s ease-in-out,
-			color 0.3s ease-in-out;
-	}
-
-	/* Hide spinner buttons in Chrome, Safari, Edge, Opera */
-	.guess input::-webkit-outer-spin-button,
-	.guess input::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-
-	.guess input:disabled {
-		box-shadow: none;
-	}
-
-	.guess input:focus {
-		outline: rgb(var(--color) / 0.4) solid 4px;
-	}
-
-	.not-judged {
-		margin-bottom: 8px;
-	}
-
-	.guess .missing:not(:disabled) {
-		padding: 1px;
-		border: solid rgb(255 115 100);
-		border-width: 4px;
-	}
-
-	.guess .missing:focus {
-		outline: rgb(255 115 100 / 0.5) solid 4px;
-	}
-
-	.guess .correct {
-		background-color: var(--correct);
-		border: 1px solid oklch(from var(--correct) calc(l * 0.8) c h);
 	}
 
 	.judgement {
