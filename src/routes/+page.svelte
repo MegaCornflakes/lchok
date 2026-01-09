@@ -148,27 +148,33 @@
 
 <div class="container" class:light={!darkTheme} class:dark={darkTheme} style="--color: {colorRGB}">
 	<div class="color-box"></div>
-	{#each guesses as guess, i}
-		<div class="guess">
-			{#each guess as _, j}
-				<div class="guess-value">
-					<Counter
-						bind:value={guess[j]}
-						stepSize={stepSizes[j]}
-						min={limits[j].min}
-						max={limits[j].max}
-						disabled={i !== currentGuess}
-						unused={i > currentGuess}
-						accent="rgb({colorRGB})"
-					/>
-					{#if i < currentGuess}
-						<span class="judgement">{getDescriptor(j, guess[j] as number)}</span>
-					{/if}
-					<button onclick={submit}>Submit</button>
+	<div class="guess-container">
+		{#each guesses as guess, i}
+			<div class="current-guess">
+				<div class="guess">
+					{#each guess as _, j}
+						<div class="guess-value">
+							<div class="counter-wrapper">
+								<Counter
+									bind:value={guess[j]}
+									stepSize={stepSizes[j]}
+									min={limits[j].min}
+									max={limits[j].max}
+									disabled={i !== currentGuess}
+									unused={i > currentGuess}
+									accent="rgb({colorRGB})"
+								/>
+							</div>
+							{#if i < currentGuess}
+								<span class="judgement">{getDescriptor(j, guess[j] as number)}</span>
+							{/if}
+						</div>
+					{/each}
 				</div>
-			{/each}
-		</div>
-	{/each}
+				<button onclick={submit} class="submit" disabled={i !== currentGuess}>SUBMIT</button>
+			</div>
+		{/each}
+	</div>
 </div>
 
 <svelte:head>
@@ -195,6 +201,7 @@
 		--background-dark: #333;
 		--text-light: #333;
 		--text-dark: #fff;
+		--exponential: cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	.container.light {
@@ -204,43 +211,129 @@
 	}
 
 	.container {
+		display: grid;
+		width: 100%;
 		max-width: 800px;
 		padding: 20px;
+		overflow: hidden;
+		gap: 8px;
+		grid-template-rows: auto;
 	}
 
 	.color-box {
 		background-color: rgb(var(--color));
 		width: 100%;
 		height: 100px;
-		margin-bottom: 8px;
+	}
+
+	.guess-container {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.current-guess {
+		display: flex;
+		flex-direction: column;
 	}
 
 	.guess {
 		display: flex;
-		padding-top: 8px;
 		gap: 20px;
 	}
 
 	.guess-value {
 		display: flex;
 		flex-direction: column;
-		height: 100px;
+		flex: 1 0 0;
+	}
+
+	.counter-wrapper {
+		display: flex;
+		margin-bottom: 8px;
+	}
+
+	.submit {
+		position: relative;
+		bottom: 0px;
+		align-self: center;
+		justify-self: flex-end;
+		height: 36px;
+		padding: 4px 12px;
+		font-family: 'Figtree', sans-serif;
+		font-size: 16px;
+		font-weight: bold;
+		background-color: white;
+		color: #5cc466;
+		border: none;
+		outline: 4px solid #5cc466;
+		outline-offset: -4px;
+		cursor: pointer;
+		transition-property: opacity, height, padding, margin-bottom, outline-color;
+		transition-duration: 300ms;
+		transition-timing-function: var(--exponential);
+		overflow: hidden;
+	}
+
+	.submit:disabled {
+		opacity: 0;
+		height: 0px;
+		padding: 0px 12px;
+		outline-color: transparent;
+		cursor: default;
+		transition-property: background-color, color, opacity, height, padding, margin-bottom,
+			outline-color;
+	}
+
+	.submit:hover:enabled {
+		background-color: #5cc466;
+		color: white;
 	}
 
 	.judgement {
-		margin-top: 8px;
+		position: relative;
 		text-align: center;
-		animation: fadeAndGrow 0.3s ease-in-out 1;
+		align-content: center;
+		animation: fadeAndGrow 300ms var(--exponential) 1;
+		font-family: 'Figtree', sans-serif;
+		font-size: 16px;
+		height: 36px;
 	}
 
 	@keyframes fadeAndGrow {
 		0% {
 			opacity: 0;
-			height: 0;
+			height: 0px;
 		}
 		100% {
 			opacity: 1;
-			height: 1lh;
+			height: 36px;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.guess {
+			gap: 8px;
+		}
+
+		.judgement {
+			height: 48px;
+			animation: fadeAndGrowLarge 300ms var(--exponential) 1;
+		}
+
+		.submit {
+			height: 48px;
+		}
+
+		@keyframes fadeAndGrowLarge {
+			0% {
+				opacity: 0;
+				height: 0px;
+			}
+			100% {
+				opacity: 1;
+				height: 48px;
+			}
 		}
 	}
 </style>

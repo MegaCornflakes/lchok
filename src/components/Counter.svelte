@@ -7,6 +7,7 @@
 		max?: number
 		disabled?: boolean
 		unused?: boolean
+		[key: string]: any
 	}
 
 	let {
@@ -98,8 +99,8 @@
 	.counter {
 		display: inline-flex;
 		align-items: stretch;
-		width: 150px;
 		gap: 4px;
+		flex: auto;
 		border-color: black;
 		border-style: solid;
 		border-width: 4px;
@@ -141,6 +142,7 @@
 		font-weight: bold;
 		font-optical-sizing: auto;
 		font-variant-numeric: tabular-nums;
+		padding-inline: 16px;
 	}
 
 	button {
@@ -175,5 +177,25 @@
 	svg {
 		display: block;
 		margin: auto;
+	}
+
+	@media (max-width: 600px) {
+		.value {
+			font-size: 1.5em;
+			padding-inline: 8px;
+		}
+
+		.buttons {
+			width: 24px;
+		}
+
+		button {
+			padding: 2px;
+		}
+
+		svg {
+			width: 20px;
+			height: 20px;
+		}
 	}
 </style>
