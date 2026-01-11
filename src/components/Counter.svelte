@@ -33,7 +33,7 @@
 	}
 
 	function format(num: number | undefined, precision: number): string {
-		if (num === undefined) return ''
+		if (num === undefined || num === null) return ''
 
 		const str = num.toString()
 		const padding = precision - getPrecision(num)

@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import { game } from './state.svelte'
+	import { game, loadGameFromStorage, saveGameToStorage } from './state.svelte'
 	import Counter from '../components/Counter.svelte'
 	import Chevron from '../components/Chevron.svelte'
+	import Button from '../components/Button.svelte'
+	import { fade, fly } from 'svelte/transition'
 
 	type Vec3 = [number, number, number]
 	type Dir = 'up' | 'down' | 'left' | 'right'
@@ -48,6 +50,7 @@
 
 		if (arraysEqual(game.guesses[game.currentGuessIndex], game.oklchValues)) {
 			game.won = true
+			game.ended = true
 		}
 
 		if (!game.won && game.currentGuessIndex + 1 < game.guesses.length) {
@@ -57,6 +60,11 @@
 		}
 
 		game.currentGuessIndex += 1
+		if (game.currentGuessIndex === game.guesses.length) {
+			game.ended = true
+		}
+
+		saveGameToStorage()
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -150,22 +158,34 @@
 	// End Claude
 
 	onMount(() => {
+		if (loadGameFromStorage()) return
+
 		game.oklchValues = generateRandomOklchColor()
 		const [r, g, b] = oklchToSrgb(...game.oklchValues)
 		game.colorRGB = `${r} ${g} ${b}`
-		game.guesses[game.currentGuessIndex] = [0, 0, 0]
+		game.guesses[0] = [0, 0, 0]
+		game.currentGuessIndex = 0
 		console.log(`Generated color: ${game.oklchValues}`)
 	})
+
+	$inspect(game.currentGuessIndex)
 </script>
 
-<div
-	class="container"
-	class:light={!darkTheme}
-	class:dark={darkTheme}
-	style="--color: {game.colorRGB}"
->
+<div class="game" class:light={!darkTheme} class:dark={darkTheme} style="--color: {game.colorRGB}">
+	<Button
+		onclick={() => {
+			localStorage.removeItem('game-state')
+			location.reload()
+		}}
+		class="center-button">NEW GAME</Button
+	>
 	<div class="color-box"></div>
 	<div class="guess-container">
+		<div class="column-labels">
+			<span class="label">L</span>
+			<span class="label">C</span>
+			<span class="label">H</span>
+		</div>
 		{#each game.guesses as guess, i}
 			<div class="current-guess">
 				<div class="guess">
@@ -196,12 +216,17 @@
 						</div>
 					{/each}
 				</div>
-				<button onclick={submit} class="submit" disabled={i !== game.currentGuessIndex}
-					>SUBMIT</button
-				>
+				{#if i === game.currentGuessIndex}
+					<Button color="#5cc466" class="center-button" onclick={submit}>SUBMIT</Button>
+				{/if}
 			</div>
 		{/each}
 	</div>
+	{#if game.ended}
+		<Button color="#f05454" class="center-button" onclick={() => location.reload()}>
+			VIEW RESULTS
+		</Button>
+	{/if}
 </div>
 
 <svelte:head>
@@ -210,16 +235,9 @@
 			margin: 0;
 			display: flex;
 			justify-content: center;
-			font-family: sans-serif;
 			background-color: var(--background-light);
 		}
 	</style>
-	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-	<link
-		href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap"
-		rel="stylesheet"
-	/>
 </svelte:head>
 
 <style>
@@ -231,43 +249,58 @@
 		--exponential: cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
-	.container.light {
+	.game.light {
 		--background: var(--background-light);
 		--text: var(--text-light);
 		--correct: #b7d68d;
 	}
 
-	.container {
+	.game {
 		display: grid;
+		grid-template-columns: repeat(3, 1fr);
 		width: 100%;
-		max-width: 800px;
-		padding: 20px;
 		overflow: hidden;
-		gap: 8px;
-		grid-template-rows: auto;
+		gap: 16px;
 	}
 
 	.color-box {
 		background-color: rgb(var(--color));
 		width: 100%;
 		height: 100px;
+		grid-column: 1 / -1;
+	}
+
+	.column-labels {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 20px;
+		font-size: 2rem;
+		font-weight: bold;
+	}
+
+	.label {
+		text-align: center;
 	}
 
 	.guess-container {
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
+		grid-column: 1 / -1;
 	}
 
 	.current-guess {
-		display: flex;
+		display: grid;
 		flex-direction: column;
+		grid-template-columns: repeat(3, 1fr);
+		column-gap: 20px;
 	}
 
 	.guess {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
 		gap: 20px;
+		grid-column: 1 / -1;
 	}
 
 	.guess-value {
@@ -281,41 +314,9 @@
 		margin-bottom: 8px;
 	}
 
-	.submit {
-		position: relative;
-		bottom: 0px;
-		align-self: center;
-		justify-self: flex-end;
-		height: 36px;
-		padding: 4px 12px;
-		font-family: 'Figtree', sans-serif;
-		font-size: 16px;
-		font-weight: bold;
-		background-color: white;
-		color: #5cc466;
-		border: none;
-		outline: 4px solid #5cc466;
-		outline-offset: -4px;
-		cursor: pointer;
-		transition-property: opacity, height, padding, margin-bottom, outline-color;
-		transition-duration: 300ms;
-		transition-timing-function: var(--exponential);
-		overflow: hidden;
-	}
-
-	.submit:disabled {
-		opacity: 0;
-		height: 0px;
-		padding: 0px 12px;
-		outline-color: transparent;
-		cursor: default;
-		transition-property: background-color, color, opacity, height, padding, margin-bottom,
-			outline-color;
-	}
-
-	.submit:hover:enabled {
-		background-color: #5cc466;
-		color: white;
+	:global(.center-button) {
+		grid-column: 2 / 3;
+		animation: fadeAndGrow 300ms var(--exponential) 1;
 	}
 
 	.judgement {
@@ -325,7 +326,7 @@
 		align-items: center;
 		gap: 6px;
 		max-width: 100%;
-		animation: fadeAndGrow 300ms var(--exponential) 1;
+		animation: flyIn 300ms var(--exponential) 1;
 		font-family: 'Figtree', sans-serif;
 		font-size: 16px;
 		height: 36px;
@@ -346,6 +347,17 @@
 		}
 	}
 
+	@keyframes flyIn {
+		0% {
+			opacity: 0;
+			transform: translateY(-50%);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0%);
+		}
+	}
+
 	@media (max-width: 600px) {
 		.guess {
 			gap: 8px;
@@ -356,7 +368,7 @@
 			animation: fadeAndGrowLarge 300ms var(--exponential) 1;
 		}
 
-		.submit {
+		:global(.center-button) {
 			height: 48px;
 		}
 
