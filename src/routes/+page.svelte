@@ -1,13 +1,32 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { game } from './state.svelte'
 	import Counter from '../components/Counter.svelte'
+	import Chevron from '../components/Chevron.svelte'
 
 	type Vec3 = [number, number, number]
+	type Dir = 'up' | 'down' | 'left' | 'right'
+	type Judgement = {
+		below: {
+			direction: Dir
+			text: string
+		}
+		above: {
+			direction: Dir
+			text: string
+		}
+	}
 
-	const judgements = [
-		{ below: '⬆️ Lighter', above: '⬇️ Darker' },
-		{ below: '⬆️ More saturated', above: '⬇️ Less saturated' },
-		{ below: '➡️ Further right', above: '⬅️ Further left' }
+	const judgements: [Judgement, Judgement, Judgement] = [
+		{ below: { direction: 'up', text: 'Lighter' }, above: { direction: 'down', text: 'Dark' } },
+		{
+			below: { direction: 'up', text: 'More chroma' },
+			above: { direction: 'down', text: 'Less chroma' }
+		},
+		{
+			below: { direction: 'right', text: 'Further right' },
+			above: { direction: 'left', text: 'Further left' }
+		}
 	]
 	const stepSizes = [0.05, 0.02, 20]
 	const limits = [
@@ -17,34 +36,27 @@
 	]
 
 	let darkTheme = $state(false)
-	let colorRGB = $state('150 150 150')
-	let oklchValues: Vec3 = $state([0, 0, 0])
-	let guesses: Array<Array<number | undefined>> = $state(
-		Array.from({ length: 5 }, () => Array(3).fill(undefined))
-	)
-	let currentGuess = $state(0)
-	let won = $state(false)
 
 	function arraysEqual(a: Array<number | undefined>, b: Vec3): boolean {
 		return a.length === b.length && a.every((val, i) => val === b[i])
 	}
 
 	function submit() {
-		if (guesses[currentGuess].some((v) => v === undefined)) {
+		if (game.guesses[game.currentGuessIndex].some((v) => v === undefined)) {
 			return
 		}
 
-		if (arraysEqual(guesses[currentGuess], oklchValues)) {
-			won = true
+		if (arraysEqual(game.guesses[game.currentGuessIndex], game.oklchValues)) {
+			game.won = true
 		}
 
-		if (!won && currentGuess + 1 < guesses.length) {
-			guesses[currentGuess].forEach((value, i) => {
-				guesses[currentGuess + 1][i] = value
+		if (!game.won && game.currentGuessIndex + 1 < game.guesses.length) {
+			game.guesses[game.currentGuessIndex].forEach((value, i) => {
+				game.guesses[game.currentGuessIndex + 1][i] = value
 			})
 		}
 
-		currentGuess += 1
+		game.currentGuessIndex += 1
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -55,7 +67,7 @@
 
 	function getDescriptor(index: number, value: number) {
 		const { below, above } = judgements[index]
-		const oklchValue = oklchValues[index]
+		const oklchValue = game.oklchValues[index]
 		if (value < oklchValue) return below
 		if (value > oklchValue) return above
 		if (value === oklchValue) return 'Perfect'
@@ -138,18 +150,23 @@
 	// End Claude
 
 	onMount(() => {
-		oklchValues = generateRandomOklchColor()
-		const [r, g, b] = oklchToSrgb(...oklchValues)
-		colorRGB = `${r} ${g} ${b}`
-		guesses[currentGuess] = [0, 0, 0]
-		console.log(`Generated color: ${oklchValues}`)
+		game.oklchValues = generateRandomOklchColor()
+		const [r, g, b] = oklchToSrgb(...game.oklchValues)
+		game.colorRGB = `${r} ${g} ${b}`
+		game.guesses[game.currentGuessIndex] = [0, 0, 0]
+		console.log(`Generated color: ${game.oklchValues}`)
 	})
 </script>
 
-<div class="container" class:light={!darkTheme} class:dark={darkTheme} style="--color: {colorRGB}">
+<div
+	class="container"
+	class:light={!darkTheme}
+	class:dark={darkTheme}
+	style="--color: {game.colorRGB}"
+>
 	<div class="color-box"></div>
 	<div class="guess-container">
-		{#each guesses as guess, i}
+		{#each game.guesses as guess, i}
 			<div class="current-guess">
 				<div class="guess">
 					{#each guess as _, j}
@@ -160,18 +177,28 @@
 									stepSize={stepSizes[j]}
 									min={limits[j].min}
 									max={limits[j].max}
-									disabled={i !== currentGuess}
-									unused={i > currentGuess}
-									accent="rgb({colorRGB})"
+									disabled={i !== game.currentGuessIndex}
+									unused={i > game.currentGuessIndex}
+									accent="rgb({game.colorRGB})"
 								/>
 							</div>
-							{#if i < currentGuess}
-								<span class="judgement">{getDescriptor(j, guess[j] as number)}</span>
+							{#if i < game.currentGuessIndex}
+								{@const descriptor = getDescriptor(j, guess[j] as number)}
+								{#if descriptor === 'Perfect'}
+									<span class="judgement">Perfect</span>
+								{:else if descriptor}
+									<span class="judgement">
+										<Chevron direction={descriptor.direction} />
+										<span class="judgement-text">{descriptor.text}</span>
+									</span>
+								{/if}
 							{/if}
 						</div>
 					{/each}
 				</div>
-				<button onclick={submit} class="submit" disabled={i !== currentGuess}>SUBMIT</button>
+				<button onclick={submit} class="submit" disabled={i !== game.currentGuessIndex}
+					>SUBMIT</button
+				>
 			</div>
 		{/each}
 	</div>
@@ -238,7 +265,8 @@
 	}
 
 	.guess {
-		display: flex;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
 		gap: 20px;
 	}
 
@@ -292,12 +320,19 @@
 
 	.judgement {
 		position: relative;
-		text-align: center;
-		align-content: center;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		gap: 6px;
+		max-width: 100%;
 		animation: fadeAndGrow 300ms var(--exponential) 1;
 		font-family: 'Figtree', sans-serif;
 		font-size: 16px;
 		height: 36px;
+	}
+
+	.judgement-text {
+		max-width: calc(100% - 36px);
 	}
 
 	@keyframes fadeAndGrow {

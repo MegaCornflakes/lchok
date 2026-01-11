@@ -69,7 +69,7 @@
 
 <div class="counter" class:disabled class:unused {...props} style="--accent: {accent}">
 	<div class="buttons">
-		<button onclick={increment} class="increment" disabled={disabled || value === max}>
+		<button onmousedown={increment} class="increment" disabled={disabled || value === max}>
 			<svg
 				width="24"
 				height="24"
@@ -80,7 +80,7 @@
 				<path d="M4 16L12 8L20 16" stroke="black" stroke-width="4" />
 			</svg>
 		</button>
-		<button onclick={decrement} class="decrement" disabled={disabled || value === min}>
+		<button onmousedown={decrement} class="decrement" disabled={disabled || value === min}>
 			<svg
 				width="24"
 				height="24"
