@@ -30,3 +30,8 @@ export function loadGameFromStorage() {
 
 	return false
 }
+
+// Theme
+export const theme = $state({
+	current: 'system' as 'light' | 'dark' | 'system'
+})

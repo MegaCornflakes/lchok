@@ -35,7 +35,7 @@
 	const limits = [
 		{ min: 0, max: 1 },
 		{ min: 0, max: 0.4 },
-		{ min: 0, max: 360 }
+		{ min: 0, max: 340 }
 	]
 
 	let darkTheme = $state(false)
@@ -156,7 +156,7 @@
 
 	function generateRandomOklchColor(): Vec3 {
 		const L = roundTo(Math.random(), 0.05)
-		const h = roundTo(Math.random() * 360, 20)
+		const h = roundTo(Math.random() * 340, 20)
 		const maxChroma = findMaxChroma(L, h)
 		const C = roundTo(Math.random() * maxChroma, 0.02)
 		return [L, C, h]
@@ -171,17 +171,19 @@
 		game.colorRGB = `${r} ${g} ${b}`
 		game.guesses[0] = [0, 0, 0]
 		game.currentGuessIndex = 0
+		saveGameToStorage()
 		console.log(`Generated color: ${game.oklchValues}`)
 	})
 </script>
 
-<div class="game" class:light={!darkTheme} class:dark={darkTheme} style="--color: {game.colorRGB}">
+<div class="game" style="--color: {game.colorRGB}">
 	<Button
 		onclick={() => {
 			localStorage.removeItem('game-state')
 			location.reload()
 		}}
-		class="center-button">NEW GAME</Button
+		class="center-button"
+		color="var(--foreground)">NEW GAME</Button
 	>
 	<div class="color-box"></div>
 	<div class="guess-container">
@@ -236,30 +238,7 @@
 	{/if}
 </div>
 
-<svelte:head>
-	<style>
-		body {
-			margin: 0;
-			background-color: var(--background-light);
-		}
-	</style>
-</svelte:head>
-
 <style>
-	:root {
-		--background-light: #fff;
-		--background-dark: #333;
-		--text-light: #333;
-		--text-dark: #fff;
-		--exponential: cubic-bezier(0.16, 1, 0.3, 1);
-	}
-
-	.game.light {
-		--background: var(--background-light);
-		--text: var(--text-light);
-		--correct: #b7d68d;
-	}
-
 	.game {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
@@ -272,7 +251,9 @@
 		background-color: rgb(var(--color));
 		width: 100%;
 		height: 100px;
+		box-sizing: border-box;
 		grid-column: 1 / -1;
+		border: 4px solid var(--foreground);
 	}
 
 	.column-labels {

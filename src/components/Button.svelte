@@ -20,7 +20,7 @@
 		font-family: unset;
 		font-size: 16px;
 		font-weight: bold;
-		background-color: white;
+		background-color: var(--background);
 		color: var(--color);
 		border: none;
 		outline: 4px solid var(--color);
@@ -31,7 +31,7 @@
 
 	button:hover:enabled {
 		background-color: var(--color);
-		color: white;
+		color: var(--background);
 	}
 
 	button.animated {

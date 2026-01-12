@@ -65,11 +65,39 @@
 		}
 		value = Math.min(max, Math.max(min, round(value - stepSize, precision)))
 	}
+
+	// Press-and-hold repeat logic
+	let repeatTimeout: ReturnType<typeof setTimeout> | null = null
+	let repeatInterval: ReturnType<typeof setInterval> | null = null
+
+	function startRepeat(action: () => void) {
+		action() // Fire immediately on press
+		repeatTimeout = setTimeout(() => {
+			repeatInterval = setInterval(action, 80) // Repeat every 80ms after delay
+		}, 400) // Initial delay before repeating
+	}
+
+	function stopRepeat() {
+		if (repeatTimeout) {
+			clearTimeout(repeatTimeout)
+			repeatTimeout = null
+		}
+		if (repeatInterval) {
+			clearInterval(repeatInterval)
+			repeatInterval = null
+		}
+	}
 </script>
 
 <div class="counter" class:disabled class:unused {...props} style="--accent: {accent}">
 	<div class="buttons">
-		<button onmousedown={increment} class="increment" disabled={disabled || value === max}>
+		<button
+			onmousedown={() => startRepeat(increment)}
+			onmouseup={stopRepeat}
+			onmouseleave={stopRepeat}
+			class="increment"
+			disabled={disabled || value === max}
+		>
 			<svg
 				width="24"
 				height="24"
@@ -80,7 +108,13 @@
 				<path d="M4 16L12 8L20 16" stroke="black" stroke-width="4" />
 			</svg>
 		</button>
-		<button onmousedown={decrement} class="decrement" disabled={disabled || value === min}>
+		<button
+			onmousedown={() => startRepeat(decrement)}
+			onmouseup={stopRepeat}
+			onmouseleave={stopRepeat}
+			class="decrement"
+			disabled={disabled || value === min}
+		>
 			<svg
 				width="24"
 				height="24"
@@ -101,10 +135,10 @@
 		align-items: stretch;
 		gap: 4px;
 		flex: auto;
-		border-color: black;
+		border-color: var(--foreground);
 		border-style: solid;
 		border-width: 4px;
-		background-color: black;
+		background-color: var(--foreground);
 		transition-property: gap, border-color, background-color;
 		transition-duration: 400ms;
 		transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
@@ -136,7 +170,7 @@
 		flex-grow: 1;
 		text-align: center;
 		align-content: center;
-		background-color: white;
+		background-color: var(--background);
 		font-size: 2em;
 		font-weight: bold;
 		font-optical-sizing: auto;
@@ -149,7 +183,7 @@
 		border-radius: 0;
 		border: none;
 		padding: 4px;
-		background-color: white;
+		background-color: var(--background);
 	}
 
 	button:disabled {

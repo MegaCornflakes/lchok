@@ -56,7 +56,9 @@
 	#guess-colors {
 		width: 100%;
 		display: flex;
+		box-sizing: border-box;
 		flex-direction: column;
+		border: 4px solid var(--foreground);
 	}
 
 	.result-item {
@@ -74,8 +76,8 @@
 		text-align: center;
 		align-content: center;
 		padding: 4px 8px;
-		background-color: rgb(255 255 255 / 0.75);
-		color: black;
+		background-color: rgb(from var(--background) r g b / 0.75);
+		color: var(--foreground);
 		font-weight: bold;
 	}
 </style>
