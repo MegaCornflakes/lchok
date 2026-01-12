@@ -5,6 +5,7 @@
 	import Chevron from '../components/Chevron.svelte'
 	import Button from '../components/Button.svelte'
 	import { fade, fly } from 'svelte/transition'
+	import { goto } from '$app/navigation'
 
 	type Vec3 = [number, number, number]
 	type Dir = 'up' | 'down' | 'left' | 'right'
@@ -38,12 +39,14 @@
 	]
 
 	let darkTheme = $state(false)
+	let allowAnimations = $state(false)
 
 	function arraysEqual(a: Array<number | undefined>, b: Vec3): boolean {
 		return a.length === b.length && a.every((val, i) => val === b[i])
 	}
 
 	function submit() {
+		allowAnimations = true
 		if (game.guesses[game.currentGuessIndex].some((v) => v === undefined)) {
 			return
 		}
@@ -51,6 +54,9 @@
 		if (arraysEqual(game.guesses[game.currentGuessIndex], game.oklchValues)) {
 			game.won = true
 			game.ended = true
+			saveGameToStorage()
+			goto('/results')
+			return
 		}
 
 		if (!game.won && game.currentGuessIndex + 1 < game.guesses.length) {
@@ -167,8 +173,6 @@
 		game.currentGuessIndex = 0
 		console.log(`Generated color: ${game.oklchValues}`)
 	})
-
-	$inspect(game.currentGuessIndex)
 </script>
 
 <div class="game" class:light={!darkTheme} class:dark={darkTheme} style="--color: {game.colorRGB}">
@@ -197,7 +201,7 @@
 									stepSize={stepSizes[j]}
 									min={limits[j].min}
 									max={limits[j].max}
-									disabled={i !== game.currentGuessIndex}
+									disabled={i !== game.currentGuessIndex || game.ended}
 									unused={i > game.currentGuessIndex}
 									accent="rgb({game.colorRGB})"
 								/>
@@ -205,7 +209,7 @@
 							{#if i < game.currentGuessIndex}
 								{@const descriptor = getDescriptor(j, guess[j] as number)}
 								{#if descriptor === 'Perfect'}
-									<span class="judgement">Perfect</span>
+									<span class="judgement" class:animated={allowAnimations}>Perfect</span>
 								{:else if descriptor}
 									<span class="judgement">
 										<Chevron direction={descriptor.direction} />
@@ -216,16 +220,19 @@
 						</div>
 					{/each}
 				</div>
-				{#if i === game.currentGuessIndex}
-					<Button color="#5cc466" class="center-button" onclick={submit}>SUBMIT</Button>
+				{#if i === game.currentGuessIndex && !game.ended}
+					<Button color="#5cc466" class="center-button" animated onclick={submit}>SUBMIT</Button>
 				{/if}
 			</div>
 		{/each}
 	</div>
 	{#if game.ended}
-		<Button color="#f05454" class="center-button" onclick={() => location.reload()}>
-			VIEW RESULTS
-		</Button>
+		<Button
+			color="#f05454"
+			class="center-button"
+			animated={allowAnimations}
+			onclick={() => goto('/results')}>VIEW RESULTS</Button
+		>
 	{/if}
 </div>
 
@@ -233,8 +240,6 @@
 	<style>
 		body {
 			margin: 0;
-			display: flex;
-			justify-content: center;
 			background-color: var(--background-light);
 		}
 	</style>
@@ -316,7 +321,6 @@
 
 	:global(.center-button) {
 		grid-column: 2 / 3;
-		animation: fadeAndGrow 300ms var(--exponential) 1;
 	}
 
 	.judgement {
@@ -326,10 +330,13 @@
 		align-items: center;
 		gap: 6px;
 		max-width: 100%;
-		animation: flyIn 300ms var(--exponential) 1;
 		font-family: 'Figtree', sans-serif;
 		font-size: 16px;
 		height: 36px;
+	}
+
+	.judgement.animated {
+		animation: flyIn 300ms var(--exponential) 1;
 	}
 
 	.judgement-text {

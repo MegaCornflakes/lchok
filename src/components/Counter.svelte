@@ -137,7 +137,6 @@
 		text-align: center;
 		align-content: center;
 		background-color: white;
-		font-family: 'Figtree', sans-serif;
 		font-size: 2em;
 		font-weight: bold;
 		font-optical-sizing: auto;

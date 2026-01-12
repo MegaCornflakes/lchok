@@ -28,6 +28,8 @@
 		font-family: 'Figtree', system-ui, sans-serif;
 		margin: 0;
 		height: 100%;
+		display: flex;
+		justify-content: center;
 	}
 
 	#lchok {
