@@ -1,12 +1,14 @@
 <script lang="ts">
 	import type { HTMLButtonAttributes } from 'svelte/elements'
+	import type { Snippet } from 'svelte'
 
 	type Props = HTMLButtonAttributes & {
 		color?: string
 		animated?: boolean
+		children: Snippet
 	}
 
-	let { color = 'black', animated = false, children, ...props } = $props()
+	let { color = 'black', animated = false, children, ...props }: Props = $props()
 </script>
 
 <button style="--color: {color}" class:animated {...props}>

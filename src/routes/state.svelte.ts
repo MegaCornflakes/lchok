@@ -1,5 +1,6 @@
 import type { Three } from '$lib/types'
 
+// Game
 interface GameState {
 	date: Date
 	colorRGB: string

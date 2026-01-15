@@ -1,9 +1,16 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte'
+
+	type Props = {
+		children: Snippet
+	}
+
+	let { children }: Props = $props()
 </script>
 
 <div class="modal-background">
 	<div class="modal-content">
-		<slot />
+		{@render children()}
 	</div>
 </div>
 

@@ -13,7 +13,7 @@
 	})
 </script>
 
-<div id="jerma985" data-theme={theme.current}>
+<div id="app-root" data-theme={theme.current}>
 	<div id="lchok">
 		<div id="header">
 			<p id="title">LCH, OK?</p>
@@ -58,6 +58,10 @@
 
 <svelte:head>
 	<title>LCH, OK?</title>
+	<meta
+		name="description"
+		content="LCH, OK? - A daily color guessing game where you guess colors in the OKLCH color space by entering Luminance, Chroma, and Hue values."
+	/>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
@@ -72,6 +76,7 @@
 		--foreground: #000;
 		--disabled: #c0c0c0;
 		--accent-luminance: 0.7;
+		--exponential: cubic-bezier(0.16, 1, 0.3, 1);
 	}
 
 	@media (prefers-color-scheme: dark) {
@@ -106,7 +111,7 @@
 		height: 100%;
 	}
 
-	#jerma985 {
+	#app-root {
 		height: 100%;
 		width: 100%;
 		display: flex;

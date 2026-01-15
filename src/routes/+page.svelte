@@ -1,28 +1,30 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { goto } from '$app/navigation'
+
 	import { game, loadGameFromStorage, saveGameToStorage } from './state.svelte'
+	import { oklchToSrgb, findMaxChroma, formatRgbString } from '$lib/color'
+	import { createSeededRng, hashString, roundToStep } from '$lib/random'
+	import { formatDate, sameDay } from '$lib/date'
+	import type { Three } from '$lib/types'
+
 	import Counter from '../components/Counter.svelte'
 	import Chevron from '../components/Chevron.svelte'
 	import Button from '../components/Button.svelte'
-	import { fade, fly } from 'svelte/transition'
-	import { goto } from '$app/navigation'
-	import type { Three } from '$lib/types'
-	import { formatDate, sameDay } from '$lib/date'
+
+	// ─────────────────
+	// Types + Constants
+	// ─────────────────
 
 	type Direction = 'up' | 'down' | 'left' | 'right'
 
-	type Judgement = {
-		below: {
-			direction: Direction
-			text: string
-		}
-		above: {
-			direction: Direction
-			text: string
-		}
+	interface Judgement {
+		below: { direction: Direction; text: string }
+		above: { direction: Direction; text: string }
 	}
 
-	const judgements: [Judgement, Judgement, Judgement] = [
+	/** OKLCH component labels and their corresponding judgement hints */
+	const JUDGEMENTS: Three<Judgement> = [
 		{ below: { direction: 'up', text: 'Lighter' }, above: { direction: 'down', text: 'Darker' } },
 		{
 			below: { direction: 'up', text: 'More chroma' },
@@ -33,39 +35,93 @@
 			above: { direction: 'left', text: 'Further left' }
 		}
 	]
-	const stepSizes = [0.05, 0.02, 20]
-	const limits = [
+
+	/** Step sizes for [L, C, H] components */
+	const STEP_SIZES: Three<number> = [0.05, 0.02, 20]
+
+	/** Valid ranges for [L, C, H] components */
+	const LIMITS: Three<{ min: number; max: number }> = [
 		{ min: 0, max: 1 },
 		{ min: 0, max: 0.4 },
 		{ min: 0, max: 340 }
 	]
 
-	let darkTheme = $state(false)
+	/** Maximum hue value for random generation */
+	const MAX_HUE = 340
+
+	// ─────
+	// State
+	// ─────
+
 	let allowAnimations = $state(false)
+
+	// ────────────────
+	// Helper Functions
+	// ────────────────
 
 	function arraysEqual(a: Array<number | undefined>, b: Three<number>): boolean {
 		return a.length === b.length && a.every((val, i) => val === b[i])
 	}
 
+	/**
+	 * Determines the hint to show for a guessed value
+	 * @returns 'Perfect' if exact match, direction hint otherwise
+	 */
+	function getDescriptor(index: number, value: number): Judgement['below'] | 'Perfect' | undefined {
+		const oklchValue = game.oklchValues[index]
+
+		if (value === oklchValue) return 'Perfect'
+		if (value < oklchValue) return JUDGEMENTS[index].below
+		if (value > oklchValue) return JUDGEMENTS[index].above
+	}
+
+	/**
+	 * Generates a deterministic random OKLCH color based on the game date
+	 */
+	function generateRandomOklchColor(): Three<number> {
+		const seed = hashString(formatDate(game.date))
+		const rng = createSeededRng(seed)
+
+		const L = roundToStep(rng(), STEP_SIZES[0])
+		const h = roundToStep(rng() * MAX_HUE, STEP_SIZES[2])
+		const maxChroma = findMaxChroma(L, h)
+		const C = roundToStep(rng() * maxChroma, STEP_SIZES[1])
+
+		return [L, C, h]
+	}
+
+	// ──────────
+	// Game Logic
+	// ──────────
+
 	function submit() {
 		allowAnimations = true
-		if (game.guesses[game.currentGuessIndex].some((v) => v === undefined)) {
+		const currentGuess = game.guesses[game.currentGuessIndex]
+
+		// Validate all values are filled
+		if (currentGuess.some((v) => v === undefined)) {
 			return
 		}
 
-		if (arraysEqual(game.guesses[game.currentGuessIndex], game.oklchValues)) {
+		// Check for win condition
+		if (arraysEqual(currentGuess, game.oklchValues)) {
 			game.won = true
 			game.ended = true
 			saveGameToStorage()
 			goto('/results')
+			return
 		}
 
-		if (!game.ended && game.currentGuessIndex + 1 < game.guesses.length) {
-			game.guesses[game.currentGuessIndex].forEach((value, i) => {
-				game.guesses[game.currentGuessIndex + 1][i] = value
+		// Copy current guess values to next row (if available)
+		const hasNextGuess = game.currentGuessIndex + 1 < game.guesses.length
+		if (!game.ended && hasNextGuess) {
+			const nextGuess = game.guesses[game.currentGuessIndex + 1]
+			currentGuess.forEach((value, i) => {
+				nextGuess[i] = value
 			})
 		}
 
+		// Advance to next guess
 		game.currentGuessIndex += 1
 		if (game.currentGuessIndex === game.guesses.length) {
 			game.ended = true
@@ -74,119 +130,22 @@
 		saveGameToStorage()
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			submit()
-		}
-	}
-
-	function getDescriptor(index: number, value: number) {
-		const { below, above } = judgements[index]
-		const oklchValue = game.oklchValues[index]
-		if (value < oklchValue) return below
-		if (value > oklchValue) return above
-		if (value === oklchValue) return 'Perfect'
-	}
-
-	function splitmix32(a: any) {
-		return function () {
-			a |= 0
-			a = (a + 0x9e3779b9) | 0
-			let t = a ^ (a >>> 16)
-			t = Math.imul(t, 0x21f0aaad)
-			t = t ^ (t >>> 15)
-			t = Math.imul(t, 0x735a2d97)
-			return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296
-		}
-	}
-
-	// This section is written by Claude I'll blow up if something is wrong
-	function linearSrgbToOklab(r: number, g: number, b: number): Three<number> {
-		const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
-		const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
-		const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
-
-		const l_ = Math.cbrt(l)
-		const m_ = Math.cbrt(m)
-		const s_ = Math.cbrt(s)
-
-		return [
-			0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_,
-			1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_,
-			0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
-		]
-	}
-
-	function oklabToLinearSrgb(L: number, a: number, b: number): Three<number> {
-		const l_ = L + 0.3963377774 * a + 0.2158037573 * b
-		const m_ = L - 0.1055613458 * a - 0.0638541728 * b
-		const s_ = L - 0.0894841775 * a - 1.291485548 * b
-
-		const l = l_ ** 3
-		const m = m_ ** 3
-		const s = s_ ** 3
-
-		return [
-			+4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-			-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-			-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s
-		]
-	}
-
-	function oklchToSrgb(L: number, C: number, h: number): Three<number> {
-		const hRad = (h * Math.PI) / 180
-		const a = C * Math.cos(hRad)
-		const b = C * Math.sin(hRad)
-		const rgbLinear = oklabToLinearSrgb(L, a, b)
-		const rgbSrgb = rgbLinear.map((v) =>
-			v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055
-		)
-		return rgbSrgb.map((v) => Math.max(0, Math.min(255, v * 255))) as Three<number>
-	}
-
-	function isValidSrgb(rgb: Three<number>): boolean {
-		return rgb.every((v) => v >= 0 && v <= 255)
-	}
-
-	function findMaxChroma(L: number, h: number, tolerance: number = 0.001): number {
-		let low = 0
-		let high = 0.4 // 0.4 is a reasonable upper bound for chroma in OKLCH
-		while (high - low > tolerance) {
-			const mid = (low + high) / 2
-			const rgb = oklchToSrgb(L, mid, h)
-			if (isValidSrgb(rgb)) {
-				low = mid
-			} else {
-				high = mid
-			}
-		}
-		return low
-	}
-
-	function roundTo(value: number, step: number): number {
-		return Number((Math.round(value / step) * step).toFixed(10))
-	}
-
-	function generateRandomOklchColor(): Three<number> {
-		const rng = splitmix32(formatDate(game.date))
-		const L = roundTo(rng(), 0.05)
-		const h = roundTo(rng() * 340, 20)
-		const maxChroma = findMaxChroma(L, h)
-		const C = roundTo(rng() * maxChroma, 0.02)
-		return [L, C, h]
-	}
-	// End Claude
+	// ─────────
+	// Lifecycle
+	// ---------
 
 	onMount(() => {
-		if (sameDay(game.date) && loadGameFromStorage()) return
+		// Try to load existing game for today
+		if (sameDay(game.date) && loadGameFromStorage()) {
+			return
+		}
 
+		// Initialize new game
 		game.oklchValues = generateRandomOklchColor()
-		const [r, g, b] = oklchToSrgb(...game.oklchValues)
-		game.colorRGB = `${r} ${g} ${b}`
+		game.colorRGB = formatRgbString(oklchToSrgb(...game.oklchValues))
 		game.guesses[0] = [0, 0, 0]
 		game.currentGuessIndex = 0
 		saveGameToStorage()
-		console.log(`Generated color: ${game.oklchValues}`)
 	})
 </script>
 
@@ -199,6 +158,10 @@
 			<span class="label">H</span>
 		</div>
 		{#each game.guesses as guess, i}
+			{@const isCurrentRow = i === game.currentGuessIndex}
+			{@const isPastRow = i < game.currentGuessIndex}
+			{@const isDisabled = !isCurrentRow || game.ended}
+			{@const isUnused = i > game.currentGuessIndex || (isCurrentRow && game.ended)}
 			<div class="current-guess">
 				<div class="guess">
 					{#each guess as _, j}
@@ -206,17 +169,16 @@
 							<div class="counter-wrapper">
 								<Counter
 									bind:value={guess[j]}
-									stepSize={stepSizes[j]}
-									min={limits[j].min}
-									max={limits[j].max}
-									disabled={i !== game.currentGuessIndex || game.ended}
-									unused={i > game.currentGuessIndex ||
-										(i === game.currentGuessIndex && game.ended)}
+									stepSize={STEP_SIZES[j]}
+									min={LIMITS[j].min}
+									max={LIMITS[j].max}
+									disabled={isDisabled}
+									unused={isUnused}
 									accent="rgb({game.colorRGB})"
-									correct={guess[j] === game.oklchValues[j] && i < game.currentGuessIndex}
+									correct={guess[j] === game.oklchValues[j] && isPastRow}
 								/>
 							</div>
-							{#if i < game.currentGuessIndex}
+							{#if isPastRow}
 								{@const descriptor = getDescriptor(j, guess[j] as number)}
 								{#if descriptor === 'Perfect'}
 									<span class="judgement" class:animated={allowAnimations}>Perfect</span>
@@ -230,7 +192,7 @@
 						</div>
 					{/each}
 				</div>
-				{#if i === game.currentGuessIndex && !game.ended}
+				{#if isCurrentRow && !game.ended}
 					<Button color="#5cc466" class="center-button" animated onclick={submit}>SUBMIT</Button>
 				{/if}
 			</div>

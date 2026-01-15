@@ -6,12 +6,17 @@
 	import type { Three } from '$lib/types'
 	import { formatDate } from '$lib/date'
 
+	// State
+
 	let validGuesses = $derived(
 		game.guesses.filter((guess) => guess.every((v) => v || v === 0)) as Three<number>[]
 	)
 
 	let copied = $state(false)
 
+	// Helper Functions
+
+	/** Converts a guess to an emoji */
 	function guessToEmoji(guess: Three<number>) {
 		const emoji = guess
 			.map((v, i) => {
@@ -27,11 +32,14 @@
 		return emoji
 	}
 
+	/** Copies the results to the clipboard */
 	function copyResults() {
 		const beginning = `https://cornflake.club/lchok/\nLCH, OK? ${formatDate(game.date)}\n`
 		const text = validGuesses.map((guess) => guessToEmoji(guess)).join('\n')
 		navigator.clipboard.writeText(beginning + text).then(() => (copied = true))
 	}
+
+	// Lifecycle
 
 	onMount(() => {
 		// Get the game state from storage
