@@ -3,8 +3,35 @@
 	import { game, loadGameFromStorage } from '../state.svelte'
 	import Button from '../../components/Button.svelte'
 	import { goto } from '$app/navigation'
+	import type { Three } from '$lib/types'
+	import { formatDate } from '$lib/date'
 
-	let validGuesses = $derived(game.guesses.filter((guess) => guess.every((v) => v)))
+	let validGuesses = $derived(
+		game.guesses.filter((guess) => guess.every((v) => v || v === 0)) as Three<number>[]
+	)
+
+	let copied = $state(false)
+
+	function guessToEmoji(guess: Three<number>) {
+		const emoji = guess
+			.map((v, i) => {
+				if (v < game.oklchValues[i]) {
+					return i !== 2 ? '\u2B07\uFE0F' : '\u2B05\uFE0F' // Down Arrow (L, C) or Left Arrow (H)
+				} else if (v > game.oklchValues[i]) {
+					return i !== 2 ? '\u2B06\uFE0F' : '\u27A1\uFE0F' // Up Arrow (L, C) or Right Arrow (H)
+				} else {
+					return '\u2705' // Checkmark
+				}
+			})
+			.join('')
+		return emoji
+	}
+
+	function copyResults() {
+		const beginning = `https://cornflake.club/lchok/\nLCH, OK? ${formatDate(game.date)}\n`
+		const text = validGuesses.map((guess) => guessToEmoji(guess)).join('\n')
+		navigator.clipboard.writeText(beginning + text).then(() => (copied = true))
+	}
 
 	onMount(() => {
 		// Get the game state from storage
@@ -38,7 +65,12 @@
 		</div>
 	</div>
 
-	<Button color="#f05454" class="hamburger" onclick={() => goto('/')}>GO BACK</Button>
+	<div id="results-actions">
+		<Button color="#f05454" class="go-back" onclick={() => goto('/')}>GO BACK</Button>
+		<Button color="#5454f0" class="copy-results" onclick={copyResults}
+			>{copied ? 'COPIED' : 'COPY RESULTS'}</Button
+		>
+	</div>
 </div>
 
 <style>
@@ -79,5 +111,30 @@
 		background-color: rgb(from var(--background) r g b / 0.75);
 		color: var(--foreground);
 		font-weight: bold;
+	}
+
+	#results-actions {
+		display: grid;
+		width: 100%;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 16px;
+	}
+
+	:global(.go-back) {
+		grid-column: 1 / 2;
+	}
+
+	:global(.copy-results) {
+		grid-column: 3 / 4;
+	}
+
+	@media (max-width: 600px) {
+		#results {
+			gap: 8px;
+		}
+
+		:global(.copy-results) {
+			grid-column: 2 / 4;
+		}
 	}
 </style>

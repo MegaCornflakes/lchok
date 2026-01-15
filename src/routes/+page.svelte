@@ -6,22 +6,24 @@
 	import Button from '../components/Button.svelte'
 	import { fade, fly } from 'svelte/transition'
 	import { goto } from '$app/navigation'
+	import type { Three } from '$lib/types'
+	import { formatDate, sameDay } from '$lib/date'
 
-	type Vec3 = [number, number, number]
-	type Dir = 'up' | 'down' | 'left' | 'right'
+	type Direction = 'up' | 'down' | 'left' | 'right'
+
 	type Judgement = {
 		below: {
-			direction: Dir
+			direction: Direction
 			text: string
 		}
 		above: {
-			direction: Dir
+			direction: Direction
 			text: string
 		}
 	}
 
 	const judgements: [Judgement, Judgement, Judgement] = [
-		{ below: { direction: 'up', text: 'Lighter' }, above: { direction: 'down', text: 'Dark' } },
+		{ below: { direction: 'up', text: 'Lighter' }, above: { direction: 'down', text: 'Darker' } },
 		{
 			below: { direction: 'up', text: 'More chroma' },
 			above: { direction: 'down', text: 'Less chroma' }
@@ -41,7 +43,7 @@
 	let darkTheme = $state(false)
 	let allowAnimations = $state(false)
 
-	function arraysEqual(a: Array<number | undefined>, b: Vec3): boolean {
+	function arraysEqual(a: Array<number | undefined>, b: Three<number>): boolean {
 		return a.length === b.length && a.every((val, i) => val === b[i])
 	}
 
@@ -56,10 +58,9 @@
 			game.ended = true
 			saveGameToStorage()
 			goto('/results')
-			return
 		}
 
-		if (!game.won && game.currentGuessIndex + 1 < game.guesses.length) {
+		if (!game.ended && game.currentGuessIndex + 1 < game.guesses.length) {
 			game.guesses[game.currentGuessIndex].forEach((value, i) => {
 				game.guesses[game.currentGuessIndex + 1][i] = value
 			})
@@ -87,8 +88,20 @@
 		if (value === oklchValue) return 'Perfect'
 	}
 
+	function splitmix32(a: any) {
+		return function () {
+			a |= 0
+			a = (a + 0x9e3779b9) | 0
+			let t = a ^ (a >>> 16)
+			t = Math.imul(t, 0x21f0aaad)
+			t = t ^ (t >>> 15)
+			t = Math.imul(t, 0x735a2d97)
+			return ((t = t ^ (t >>> 15)) >>> 0) / 4294967296
+		}
+	}
+
 	// This section is written by Claude I'll blow up if something is wrong
-	function linearSrgbToOklab(r: number, g: number, b: number): Vec3 {
+	function linearSrgbToOklab(r: number, g: number, b: number): Three<number> {
 		const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
 		const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
 		const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
@@ -104,7 +117,7 @@
 		]
 	}
 
-	function oklabToLinearSrgb(L: number, a: number, b: number): Vec3 {
+	function oklabToLinearSrgb(L: number, a: number, b: number): Three<number> {
 		const l_ = L + 0.3963377774 * a + 0.2158037573 * b
 		const m_ = L - 0.1055613458 * a - 0.0638541728 * b
 		const s_ = L - 0.0894841775 * a - 1.291485548 * b
@@ -120,7 +133,7 @@
 		]
 	}
 
-	function oklchToSrgb(L: number, C: number, h: number): Vec3 {
+	function oklchToSrgb(L: number, C: number, h: number): Three<number> {
 		const hRad = (h * Math.PI) / 180
 		const a = C * Math.cos(hRad)
 		const b = C * Math.sin(hRad)
@@ -128,10 +141,10 @@
 		const rgbSrgb = rgbLinear.map((v) =>
 			v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055
 		)
-		return rgbSrgb.map((v) => Math.max(0, Math.min(255, v * 255))) as Vec3
+		return rgbSrgb.map((v) => Math.max(0, Math.min(255, v * 255))) as Three<number>
 	}
 
-	function isValidSrgb(rgb: Vec3): boolean {
+	function isValidSrgb(rgb: Three<number>): boolean {
 		return rgb.every((v) => v >= 0 && v <= 255)
 	}
 
@@ -154,17 +167,18 @@
 		return Number((Math.round(value / step) * step).toFixed(10))
 	}
 
-	function generateRandomOklchColor(): Vec3 {
-		const L = roundTo(Math.random(), 0.05)
-		const h = roundTo(Math.random() * 340, 20)
+	function generateRandomOklchColor(): Three<number> {
+		const rng = splitmix32(formatDate(game.date))
+		const L = roundTo(rng(), 0.05)
+		const h = roundTo(rng() * 340, 20)
 		const maxChroma = findMaxChroma(L, h)
-		const C = roundTo(Math.random() * maxChroma, 0.02)
+		const C = roundTo(rng() * maxChroma, 0.02)
 		return [L, C, h]
 	}
 	// End Claude
 
 	onMount(() => {
-		if (loadGameFromStorage()) return
+		if (sameDay(game.date) && loadGameFromStorage()) return
 
 		game.oklchValues = generateRandomOklchColor()
 		const [r, g, b] = oklchToSrgb(...game.oklchValues)
@@ -177,14 +191,6 @@
 </script>
 
 <div class="game" style="--color: {game.colorRGB}">
-	<Button
-		onclick={() => {
-			localStorage.removeItem('game-state')
-			location.reload()
-		}}
-		class="center-button"
-		color="var(--foreground)">NEW GAME</Button
-	>
 	<div class="color-box"></div>
 	<div class="guess-container">
 		<div class="column-labels">
@@ -204,8 +210,10 @@
 									min={limits[j].min}
 									max={limits[j].max}
 									disabled={i !== game.currentGuessIndex || game.ended}
-									unused={i > game.currentGuessIndex}
+									unused={i > game.currentGuessIndex ||
+										(i === game.currentGuessIndex && game.ended)}
 									accent="rgb({game.colorRGB})"
+									correct={guess[j] === game.oklchValues[j] && i < game.currentGuessIndex}
 								/>
 							</div>
 							{#if i < game.currentGuessIndex}
@@ -259,7 +267,7 @@
 	.column-labels {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 20px;
+		gap: 16px;
 		font-size: 2rem;
 		font-weight: bold;
 	}
@@ -279,13 +287,13 @@
 		display: grid;
 		flex-direction: column;
 		grid-template-columns: repeat(3, 1fr);
-		column-gap: 20px;
+		column-gap: 16px;
 	}
 
 	.guess {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
-		gap: 20px;
+		gap: 16px;
 		grid-column: 1 / -1;
 	}
 
@@ -302,6 +310,7 @@
 
 	:global(.center-button) {
 		grid-column: 2 / 3;
+		min-width: max-content;
 	}
 
 	.judgement {
@@ -369,6 +378,12 @@
 				opacity: 1;
 				height: 48px;
 			}
+		}
+	}
+
+	@media (max-height: 1000px) {
+		.game {
+			row-gap: 8px;
 		}
 	}
 </style>

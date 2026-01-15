@@ -1,0 +1,33 @@
+<script lang="ts">
+</script>
+
+<div class="modal-background">
+	<div class="modal-content">
+		<slot />
+	</div>
+</div>
+
+<style>
+	.modal-background {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background-color: rgba(0, 0, 0, 0.5);
+		z-index: 9999;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	.modal-content {
+		background-color: var(--background);
+		border: 4px solid var(--foreground);
+		padding: 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		width: min(calc(100% - 64px), 600px);
+	}
+</style>

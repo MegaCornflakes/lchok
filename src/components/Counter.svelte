@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { theme } from '../routes/state.svelte'
+
 	type Props = {
 		accent: string
 		value?: number
@@ -7,6 +9,7 @@
 		max?: number
 		disabled?: boolean
 		unused?: boolean
+		correct?: boolean
 		[key: string]: any
 	}
 
@@ -18,6 +21,7 @@
 		max = Infinity,
 		disabled = false,
 		unused = false,
+		correct = false,
 		...props
 	}: Props = $props()
 
@@ -89,7 +93,14 @@
 	}
 </script>
 
-<div class="counter" class:disabled class:unused {...props} style="--accent: {accent}">
+<div
+	class="counter"
+	class:disabled
+	class:unused
+	class:correct
+	{...props}
+	style="--accent: {accent}"
+>
 	<div class="buttons">
 		<button
 			onmousedown={() => startRepeat(increment)}
@@ -122,7 +133,7 @@
 				fill="none"
 				xmlns="http://www.w3.org/2000/svg"
 			>
-				<path d="M4 8L12 16L20 8" stroke="black" stroke-width="4" />
+				<path d="M4 8L12 16L20 8" stroke-width="4" />
 			</svg>
 		</button>
 	</div>
@@ -142,6 +153,7 @@
 		transition-property: gap, border-color, background-color;
 		transition-duration: 400ms;
 		transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+		--accent-adjusted: oklch(from var(--accent) var(--accent-luminance) c h);
 	}
 
 	.counter.disabled {
@@ -150,8 +162,17 @@
 	}
 
 	.counter.unused {
-		border-color: #c0c0c0;
-		background-color: #c0c0c0;
+		border-color: var(--disabled);
+		background-color: var(--disabled);
+	}
+
+	.counter.correct {
+		border-color: var(--accent-adjusted);
+		background-color: var(--accent-adjusted);
+	}
+
+	.counter.correct .value {
+		color: var(--accent-adjusted);
 	}
 
 	.buttons {
@@ -190,12 +211,16 @@
 		cursor: default;
 	}
 
+	button > svg > path {
+		stroke: var(--foreground);
+	}
+
 	button:hover > svg > path {
-		stroke: var(--accent);
+		stroke: oklch(from var(--accent) var(--accent-luminance) c h);
 	}
 
 	button:disabled > svg > path {
-		stroke: #c0c0c0;
+		stroke: var(--disabled);
 	}
 
 	.counter.disabled button > svg > path {
@@ -204,7 +229,7 @@
 
 	button:focus {
 		z-index: 1;
-		outline: var(--accent) solid 4px;
+		outline: oklch(from var(--accent) var(--accent-luminance) c h) solid 4px;
 	}
 
 	svg {

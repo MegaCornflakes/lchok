@@ -18,12 +18,13 @@
 	}
 
 	.chevron > rect {
-		fill: black;
+		fill: var(--foreground);
 	}
 
 	.chevron > path {
-		stroke: white;
+		stroke: var(--background);
 		stroke-width: 4px;
+		fill: none;
 	}
 
 	.chevron.up {

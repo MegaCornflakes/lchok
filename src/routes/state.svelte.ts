@@ -1,16 +1,20 @@
+import type { Three } from '$lib/types'
+
 interface GameState {
+	date: Date
 	colorRGB: string
-	oklchValues: [number, number, number]
-	guesses: (number | undefined)[][]
+	oklchValues: Three<number>
+	guesses: Three<number | undefined>[]
 	currentGuessIndex: number
 	won: boolean
 	ended: boolean
 }
 
 export const game: GameState = $state({
+	date: new Date(),
 	colorRGB: '150 150 150',
 	oklchValues: [0, 0, 0],
-	guesses: Array.from({ length: 5 }, () => Array(3).fill(undefined)),
+	guesses: Array.from({ length: 5 }, () => Array(3).fill(undefined)) as Three<number | undefined>[],
 	currentGuessIndex: -1,
 	won: false,
 	ended: false
@@ -24,6 +28,7 @@ export function loadGameFromStorage() {
 	const savedState = localStorage.getItem('game-state')
 	if (savedState) {
 		const parsedState: GameState = JSON.parse(savedState)
+		parsedState.date = new Date(parsedState.date)
 		Object.assign(game, parsedState)
 		return true
 	}
