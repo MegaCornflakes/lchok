@@ -11,8 +11,6 @@
 	onMount(() => {
 		theme.current = (localStorage.getItem('theme') || 'system') as 'light' | 'dark' | 'system'
 	})
-
-	export const prerender = true
 </script>
 
 <div id="app-root" data-theme={theme.current}>
