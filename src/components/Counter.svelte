@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { getPrecision, roundToPrecision } from '$lib/random'
 	import { theme } from '../routes/state.svelte'
 
 	// Props
@@ -29,19 +30,6 @@
 
 	// Helper Functions
 
-	/** Get the number of decimal places in a number */
-	function getPrecision(num: number): number {
-		const str = num.toString()
-		const decimal = str.indexOf('.')
-		return decimal === -1 ? 0 : str.length - decimal - 1
-	}
-
-	/** Round a number to a specified precision */
-	function round(num: number, precision: number): number {
-		const factor = 10 ** precision
-		return Math.round(num * factor) / factor
-	}
-
 	/** Format a number to a string with a specified precision */
 	function format(num: number | undefined, precision: number): string {
 		if (num === undefined || num === null) return ''
@@ -69,14 +57,14 @@
 		if (value === undefined) {
 			value = 0
 		}
-		value = Math.min(max, Math.max(min, round(value + stepSize, precision)))
+		value = Math.min(max, Math.max(min, roundToPrecision(value + stepSize, precision)))
 	}
 
 	function decrement() {
 		if (value === undefined) {
 			value = 0
 		}
-		value = Math.min(max, Math.max(min, round(value - stepSize, precision)))
+		value = Math.min(max, Math.max(min, roundToPrecision(value - stepSize, precision)))
 	}
 
 	// Press-and-hold repeat logic

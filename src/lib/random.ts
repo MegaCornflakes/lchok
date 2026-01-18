@@ -69,6 +69,19 @@ export function hashString(str: string): number {
 	return hash
 }
 
+/** Get the number of decimal places in a number */
+export function getPrecision(num: number): number {
+	const str = num.toString()
+	const decimal = str.indexOf('.')
+	return decimal === -1 ? 0 : str.length - decimal - 1
+}
+
+/** Round a number to a specified precision */
+export function roundToPrecision(num: number, precision: number): number {
+	const factor = 10 ** precision
+	return Math.round(num * factor) / factor
+}
+
 /**
  * Rounds a value to the nearest step
  * @param value - The value to round
@@ -76,5 +89,6 @@ export function hashString(str: string): number {
  * @returns Rounded value
  */
 export function roundToStep(value: number, step: number): number {
-	return Math.round(value / step) * step
+	const precision = getPrecision(step)
+	return roundToPrecision(Math.round(value / step) * step, precision)
 }

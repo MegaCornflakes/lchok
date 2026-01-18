@@ -109,7 +109,7 @@
 			game.ended = true
 			game.currentGuessIndex += 1
 			saveGameToStorage()
-			goto('/results')
+			goto('/lchok/results')
 			return
 		}
 
