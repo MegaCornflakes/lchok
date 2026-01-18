@@ -37,6 +37,20 @@ export function loadGameFromStorage() {
 	return false
 }
 
+export function newGame() {
+	return {
+		date: new Date(),
+		colorRGB: '150 150 150',
+		oklchValues: [0, 0, 0],
+		guesses: Array.from({ length: 5 }, () => Array(3).fill(undefined)) as Three<
+			number | undefined
+		>[],
+		currentGuessIndex: -1,
+		won: false,
+		ended: false
+	}
+}
+
 // Theme
 export const theme = $state({
 	current: 'system' as 'light' | 'dark' | 'system'

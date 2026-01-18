@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte'
 	import { goto } from '$app/navigation'
 
-	import { game, loadGameFromStorage, saveGameToStorage } from './state.svelte'
+	import { game, loadGameFromStorage, newGame, saveGameToStorage } from './state.svelte'
 	import { oklchToSrgb, findMaxChroma, formatRgbString } from '$lib/color'
 	import { createSeededRng, hashString, roundToStep } from '$lib/random'
-	import { formatDate, sameDay } from '$lib/date'
+	import { formatDate, sameDay as sameDayToday } from '$lib/date'
 	import type { Three } from '$lib/types'
 
 	import Counter from '../components/Counter.svelte'
@@ -107,6 +107,7 @@
 		if (arraysEqual(currentGuess, game.oklchValues)) {
 			game.won = true
 			game.ended = true
+			game.currentGuessIndex += 1
 			saveGameToStorage()
 			goto('/results')
 			return
@@ -135,12 +136,15 @@
 	// ---------
 
 	onMount(() => {
-		// Try to load existing game for today
-		if (sameDay(game.date) && loadGameFromStorage()) {
-			return
+		// Try to load a saved game
+		if (loadGameFromStorage()) {
+			// If the saved game is from today, continue it
+			if (sameDayToday(game.date)) {
+				return
+			}
 		}
-
 		// Initialize new game
+		Object.assign(game, newGame())
 		game.oklchValues = generateRandomOklchColor()
 		game.colorRGB = formatRgbString(oklchToSrgb(...game.oklchValues))
 		game.guesses[0] = [0, 0, 0]

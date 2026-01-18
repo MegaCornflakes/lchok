@@ -8,7 +8,7 @@ export function formatDate(date: Date) {
 	})
 }
 
-/** Checks if two dates are on the same day in NY time */
+/** Checks if a date is the same as today in NY time */
 export function sameDay(date: Date) {
 	const now = new Date()
 	return formatDate(now) === formatDate(date)
