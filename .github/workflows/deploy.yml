@@ -19,6 +19,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
         run: |
+          touch build/.nojekyll
           git clone https://x-access-token:${TOKEN}@github.com/MegaCornflakes/megacornflakes.github.io.git pages
           rm -rf pages/lchok
           cp -r build pages/lchok
