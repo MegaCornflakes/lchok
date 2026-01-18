@@ -207,7 +207,7 @@
 			color="#f05454"
 			class="center-button"
 			animated={allowAnimations}
-			onclick={() => goto('/results')}>VIEW RESULTS</Button
+			onclick={() => goto('/lchok/results')}>VIEW RESULTS</Button
 		>
 	{/if}
 </div>

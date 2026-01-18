@@ -47,7 +47,7 @@
 
 		if (!game.ended) {
 			// If the game hasn't ended, redirect to the main page
-			goto('/')
+			goto('/lchok')
 		}
 	})
 </script>
@@ -74,7 +74,7 @@
 	</div>
 
 	<div id="results-actions">
-		<Button color="#f05454" class="go-back" onclick={() => goto('/')}>GO BACK</Button>
+		<Button color="#f05454" class="go-back" onclick={() => goto('/lchok')}>GO BACK</Button>
 		<Button color="#5454f0" class="copy-results" onclick={copyResults}
 			>{copied ? 'COPIED' : 'COPY RESULTS'}</Button
 		>
